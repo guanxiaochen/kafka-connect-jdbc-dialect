@@ -1,0 +1,14 @@
+# Documentation build output
+/docs/_build
+
+.DS_Store
+
+*.iml
+*.ipr
+*.iws
+.ipr
+.idea/
+target/
+apidocs/
+/.classpath
+/.project
