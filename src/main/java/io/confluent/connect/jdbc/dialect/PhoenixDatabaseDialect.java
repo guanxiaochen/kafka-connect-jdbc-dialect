@@ -111,6 +111,25 @@ public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
         return builder.toString();
     }
 
+    protected void writeColumnSpec(ExpressionBuilder builder,  SinkRecordField f) {
+        builder.appendColumnName(f.name());
+        builder.append(" ");
+        builder.append(getSqlType(f));
+        if (f.isPrimaryKey() && !f.schema().isOptional()) {
+            builder.append(" NOT NULL");
+        }
+        if (f.defaultValue() != null) {
+            builder.append(" DEFAULT ");
+            formatColumnValue(
+                    builder,
+                    f.schemaName(),
+                    f.schemaParameters(),
+                    f.schemaType(),
+                    f.defaultValue()
+            );
+        }
+    }
+
     @Override
     protected String getSqlType(SinkRecordField field) {
         if (field.schemaName() != null) {
