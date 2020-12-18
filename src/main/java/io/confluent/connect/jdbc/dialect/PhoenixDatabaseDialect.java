@@ -16,18 +16,24 @@
 package io.confluent.connect.jdbc.dialect;
 
 import io.confluent.connect.jdbc.dialect.DatabaseDialectProvider.SubprotocolBasedProvider;
+import io.confluent.connect.jdbc.sink.metadata.SinkRecordField;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.ExpressionBuilder;
 import io.confluent.connect.jdbc.util.TableDefinition;
 import io.confluent.connect.jdbc.util.TableId;
 import org.apache.kafka.common.config.AbstractConfig;
+import org.apache.kafka.connect.data.Date;
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Time;
+import org.apache.kafka.connect.data.Timestamp;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * A {@link DatabaseDialect} for MySQL.
  */
-public class PhoenixDatabaseDialect extends OracleDatabaseDialect {
+public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
 
     /**
      * Create a new dialect instance with the given connector configuration.
@@ -84,5 +90,66 @@ public class PhoenixDatabaseDialect extends OracleDatabaseDialect {
 
     public static ExpressionBuilder.Transform<ColumnId> columnNames() {
         return (builder, input) -> builder.appendColumnName(input.name().toUpperCase());
+    }
+
+    public String buildCreateTableStatement(TableId table, Collection<SinkRecordField> fields) {
+        ExpressionBuilder builder = this.expressionBuilder();
+        List<String> pkFieldNames = this.extractPrimaryKeyFieldNames(fields);
+        builder.append("CREATE TABLE ");
+        builder.append(table);
+        builder.append(" (");
+        this.writeColumnsSpec(builder, fields);
+        if (!pkFieldNames.isEmpty()) {
+            builder.append(",");
+            builder.append(System.lineSeparator());
+            builder.append("CONSTRAINT pk PRIMARY KEY(");
+            builder.appendList().delimitedBy(",").transformedBy(ExpressionBuilder.quote()).of(pkFieldNames);
+            builder.append(")");
+        }
+
+        builder.append(")");
+        return builder.toString();
+    }
+
+    @Override
+    protected String getSqlType(SinkRecordField field) {
+        if (field.schemaName() != null) {
+            switch (field.schemaName()) {
+                case Decimal.LOGICAL_NAME:
+                    // Maximum precision supported by Phoenix is 38
+                    int scale = Integer.parseInt(field.schemaParameters().get(Decimal.SCALE_FIELD));
+                    return "DECIMAL(38," + scale + ")";
+                case Date.LOGICAL_NAME:
+                    return "DATE";
+                case Time.LOGICAL_NAME:
+                    return "TIME";
+                case Timestamp.LOGICAL_NAME:
+                    return "TIMESTAMP";
+                default:
+                    // pass through to primitive types
+            }
+        }
+        switch (field.schemaType()) {
+            case INT8:
+                return "TINYINT";
+            case INT16:
+                return "SMALLINT";
+            case INT32:
+                return "INTEGER";
+            case INT64:
+                return "BIGINT";
+            case FLOAT32:
+                return "FLOAT";
+            case FLOAT64:
+                return "DOUBLE";
+            case BOOLEAN:
+                return "BOOLEAN";
+            case STRING:
+                return "VARCHAR";
+            case BYTES:
+                return "VARBINARY";
+            default:
+                return super.getSqlType(field);
+        }
     }
 }
