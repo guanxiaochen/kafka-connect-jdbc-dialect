@@ -31,51 +31,51 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * A {@link DatabaseDialect} for Phoenix.
+ * A {@link DatabaseDialect} for Hive.
  */
-public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
+public class HiveDatabaseDialect extends GenericDatabaseDialect {
 
     /**
      * Create a new dialect instance with the given connector configuration.
      *
      * @param config the connector configuration; may not be null
      */
-    public PhoenixDatabaseDialect(AbstractConfig config) {
+    public HiveDatabaseDialect(AbstractConfig config) {
         super(config);
     }
 
     /**
-     * The provider for {@link PhoenixDatabaseDialect}.
+     * The provider for {@link HiveDatabaseDialect}.
      */
     public static class Provider extends SubprotocolBasedProvider {
         public Provider() {
-            super(PhoenixDatabaseDialect.class.getSimpleName(), "phoenix");
+            super(HiveDatabaseDialect.class.getSimpleName(), "hive2");
         }
 
         @Override
         public DatabaseDialect create(AbstractConfig config) {
-            return new PhoenixDatabaseDialect(config);
+            return new HiveDatabaseDialect(config);
         }
     }
 
     @Override
     public String buildInsertStatement(TableId table, Collection<ColumnId> keyColumns, Collection<ColumnId> nonKeyColumns) {
-        return buildPhoenixUpsertStatement(table, keyColumns, nonKeyColumns);
+        return buildHiveUpsertStatement(table, keyColumns, nonKeyColumns);
     }
 
     @Override
     public String buildUpdateStatement(TableId table, Collection<ColumnId> keyColumns, Collection<ColumnId> nonKeyColumns) {
-        return buildPhoenixUpsertStatement(table, keyColumns, nonKeyColumns);
+        return buildHiveUpsertStatement(table, keyColumns, nonKeyColumns);
     }
 
     @Override
     public String buildUpsertQueryStatement(TableId table, Collection<ColumnId> keyColumns, Collection<ColumnId> nonKeyColumns, TableDefinition definition) {
-        return buildPhoenixUpsertStatement(table, keyColumns, nonKeyColumns);
+        return buildHiveUpsertStatement(table, keyColumns, nonKeyColumns);
     }
 
-    private String buildPhoenixUpsertStatement(TableId table, Collection<ColumnId> keyColumns, Collection<ColumnId> nonKeyColumns) {
+    private String buildHiveUpsertStatement(TableId table, Collection<ColumnId> keyColumns, Collection<ColumnId> nonKeyColumns) {
         ExpressionBuilder builder = expressionBuilder();
-        builder.append("UPSERT INTO ");
+        builder.append("INSERT INTO ");
         builder.append(table);
         builder.append("(");
         builder.appendList()
@@ -89,25 +89,16 @@ public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
     }
 
     public static ExpressionBuilder.Transform<ColumnId> columnNames() {
-        return (builder, input) -> builder.appendColumnName(input.name().toUpperCase());
+        return (builder, input) -> builder.appendColumnName(input.name().toLowerCase());
     }
 
     public String buildCreateTableStatement(TableId table, Collection<SinkRecordField> fields) {
         ExpressionBuilder builder = this.expressionBuilder();
-        List<String> pkFieldNames = this.extractPrimaryKeyFieldNames(fields);
         builder.append("CREATE TABLE ");
         builder.append(table);
         builder.append(" (");
         this.writeColumnsSpec(builder, fields);
-        if (!pkFieldNames.isEmpty()) {
-            builder.append(",");
-            builder.append(System.lineSeparator());
-            builder.append("CONSTRAINT pk PRIMARY KEY(");
-            builder.appendList().delimitedBy(",").transformedBy(ExpressionBuilder.quote()).of(pkFieldNames);
-            builder.append(")");
-        }
-
-        builder.append(")");
+        builder.append(") stored AS PARQUET");
         return builder.toString();
     }
 
@@ -115,19 +106,6 @@ public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
         builder.appendColumnName(f.name());
         builder.append(" ");
         builder.append(getSqlType(f));
-        if (f.isPrimaryKey() && !f.schema().isOptional()) {
-            builder.append(" NOT NULL");
-        }
-        if (f.defaultValue() != null) {
-            builder.append(" DEFAULT ");
-            formatColumnValue(
-                    builder,
-                    f.schemaName(),
-                    f.schemaParameters(),
-                    f.schemaType(),
-                    f.defaultValue()
-            );
-        }
     }
 
     @Override
@@ -135,7 +113,6 @@ public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
         if (field.schemaName() != null) {
             switch (field.schemaName()) {
                 case Decimal.LOGICAL_NAME:
-                    // Maximum precision supported by Phoenix is 38
                     int scale = Integer.parseInt(field.schemaParameters().get(Decimal.SCALE_FIELD));
                     return "DECIMAL(38," + scale + ")";
                 case Date.LOGICAL_NAME:
@@ -154,7 +131,7 @@ public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
             case INT16:
                 return "SMALLINT";
             case INT32:
-                return "INTEGER";
+                return "INT";
             case INT64:
                 return "BIGINT";
             case FLOAT32:
@@ -164,9 +141,9 @@ public class PhoenixDatabaseDialect extends GenericDatabaseDialect {
             case BOOLEAN:
                 return "BOOLEAN";
             case STRING:
-                return "VARCHAR";
+                return "STRING";
             case BYTES:
-                return "VARBINARY";
+                return "BINARY";
             default:
                 return super.getSqlType(field);
         }

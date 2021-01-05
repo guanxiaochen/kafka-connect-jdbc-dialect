@@ -15,11 +15,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.phoenix</groupId>
-            <artifactId>phoenix-server-client</artifactId>
-            <version>4.7.0-HBase-1.1</version>
-        </dependency>
-        <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-jdbc</artifactId>
             <version>${kafka-connect-jdbc.version}</version>

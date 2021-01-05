@@ -1,1 +1,2 @@
 io.confluent.connect.jdbc.dialect.PhoenixDatabaseDialect$Provider
+io.confluent.connect.jdbc.dialect.HiveDatabaseDialect$Provider
