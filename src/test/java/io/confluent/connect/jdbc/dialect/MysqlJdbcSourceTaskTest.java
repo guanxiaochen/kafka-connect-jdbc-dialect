@@ -15,13 +15,11 @@
 
 package io.confluent.connect.jdbc.dialect;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.confluent.connect.jdbc.convert.JsonConverter;
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig;
 import io.confluent.connect.jdbc.source.JdbcSourceTask;
 import io.confluent.connect.jdbc.source.JdbcSourceTaskConfig;
 import org.apache.kafka.common.utils.Time;
-import org.apache.kafka.connect.json.DecimalFormat;
-import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -35,7 +33,6 @@ import org.powermock.api.easymock.annotation.Mock;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +81,7 @@ public class MysqlJdbcSourceTaskTest {
 
   protected Map<String, String> getProps() {
     Map<String, String> props = new HashMap<>();
-    props.put(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG, "jdbc:mysql://192.168.113.11:3306/baseqx");
+    props.put(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG, "jdbc:mysql://192.168.113.11:3306/baseqx?useSSL=false");
     props.put(JdbcSourceConnectorConfig.CONNECTION_USER_CONFIG, "root");
     props.put(JdbcSourceConnectorConfig.CONNECTION_PASSWORD_CONFIG, "123456");
 //    props.put(JdbcSourceConnectorConfig.DIALECT_NAME_CONFIG, "TMySqlDatabaseDialect");
@@ -92,7 +89,7 @@ public class MysqlJdbcSourceTaskTest {
     props.put(JdbcSourceConnectorConfig.MODE_CONFIG, JdbcSourceConnectorConfig.MODE_BULK);
     props.put(JdbcSourceConnectorConfig.TOPIC_PREFIX_CONFIG, "guan_java_");
 
-    String tableName = "test_connector_guan";
+    String tableName = "dmp_data_api";
     props.put(JdbcSourceConnectorConfig.TABLE_WHITELIST_CONFIG, tableName);
     props.put(JdbcSourceTaskConfig.TABLES_CONFIG, tableName);
     props.put(JdbcSourceTaskConfig.NUMERIC_MAPPING_CONFIG, NumericMapping.BEST_FIT.toString());
@@ -100,8 +97,8 @@ public class MysqlJdbcSourceTaskTest {
 
 
     props.put(JsonConverterConfig.TYPE_CONFIG, ConverterType.VALUE.getName());
-    props.put(JsonConverterConfig.DECIMAL_FORMAT_CONFIG, DecimalFormat.BASE64.name());
-    props.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "true");
+//    props.put(JsonConverterConfig.DECIMAL_FORMAT_CONFIG, DecimalFormat.NUMERIC.name());
+    props.put(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
     return props;
   }
 }
